@@ -1,8 +1,6 @@
 #include "main.h"
 #include "pros/misc.h"
 #include "pros/misc.hpp"
-#include <iostream>
-#include <string.h>
 
 using namespace pros;
 
@@ -96,24 +94,31 @@ void autonomous() {}
  * task, not resume it from where it left off.
  */
 void opcontrol() {
-	bool isBlue = false;
-	int x = 0;
-	sensingForBigBlackMenInYourArea.set_position(0);
+    bool isBlue = false;
+    int x = 0;
+    sensingForBigBlackMenInYourArea.set_position(0);
+    while(true){
+        int P = master.get_analog(ANALOG_LEFT_Y);
+        int S = master.get_analog(ANALOG_LEFT_X);
+        int T = master.get_analog(ANALOG_RIGHT_X);
 
-	LF.move(-100);
-	LB.move(100);
-	RF.move(100);
-	RB.move(-100);
+        LF = T - P + S;
+        LB = T + P - S;
+        RF = T + P + S;
+        RB = T - P - S;
+        delay(50);
 
-	delay(4100);
+        if(master.get_digital(E_CONTROLLER_DIGITAL_B)){aimbotForSchoolShooting.move(25); } //if get "B" Button press moves motor at a positive voltage of 50
+        else if(master.get_digital(E_CONTROLLER_DIGITAL_A)){aimbotForSchoolShooting.move(-25);}//if get "A" Button press moves motor at a negative voltage of 50
+        else{aimbotForSchoolShooting.move(-5); ;}//defaults value for if button not pressed to stop the rotation
+        delay(50);
 
-	LF.move(10);
-	LB.move(-10);
-	RF.move(-10);
-	RB.move(10);
-	delay(50);
-	LF.move(0);
-	LB.move(0);
-	RF.move(0);
-	RB.move(0);
-}
+        if(master.get_digital(E_CONTROLLER_DIGITAL_X)){glock.move(-MAX_VOLTAGE_SPEED); muzzel.move(-MAX_VOLTAGE_SPEED);}
+        else{glock.move(0); muzzel.move(0);}
+
+        if(master.get_digital(E_CONTROLLER_DIGITAL_Y)) {inserter.move(100);}
+        else{inserter.move(0);}
+
+        pros::lcd::clear_line(1);
+                }
+    }
