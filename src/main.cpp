@@ -1,6 +1,8 @@
 #include "main.h"
+#include "pros/adi.hpp"
 #include "pros/misc.h"
 #include "pros/misc.hpp"
+#include <strings.h>
 
 using namespace pros;
 
@@ -12,10 +14,16 @@ Motor glock(10);//Motor 1 for shooter
 Motor muzzel(11);//Motor 2 for shooter
 Motor inserter(4);//Motor for receptical
 Motor aimbotForSchoolShooting(15);//Motor for angle of shooter
+Imu imu(21);
 Rotation sensingForBigBlackMenInYourArea(3);//Rotational Sensor for shooter
 Controller master(E_CONTROLLER_MASTER);
 int MAX_VOLTAGE_SPEED = 127;
+ADIDigitalOut ejaculate(1); 
+ADIDigitalOut aimYourEjaculation(2);
 
+void powerDrive(double T, double P, double S);
+void drive(double ticks);
+void turn(double degrees);
 
 /**
  * A callback function for LLEMU's center button.
@@ -27,7 +35,7 @@ void on_center_button() {
 	static bool pressed = false;
 	pressed = !pressed;
 	if (pressed) {
-		pros::lcd::set_text(2, "Press against me harder daddy!");
+		pros::lcd::set_text(2, "");
 	} else {
 		pros::lcd::clear_line(2);
 	}
@@ -41,7 +49,7 @@ void on_center_button() {
  */
 void initialize() {
 	pros::lcd::initialize();
-	pros::lcd::set_text(1, "Wassup my ni-");
+	pros::lcd::set_text(1, "You're Balding Fucktard");
 	delay(1000);
 	pros::lcd::clear_line(1);
 
@@ -77,7 +85,17 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
-void autonomous() {}
+void autonomous() {
+    double turn90 = 90 - (90/8);
+    double inch = 80;
+
+    delay(1000);
+    drive(inch * 12);
+    delay(500);
+    turn(turn90);
+    drive(inch);
+    delay(2000);
+}
 
 
 /**
@@ -96,6 +114,8 @@ void autonomous() {}
 void opcontrol() {
     bool isBlue = false;
     int x = 0;
+    bool angleCondition = true;
+    bool shooterPosition = true;
     sensingForBigBlackMenInYourArea.set_position(0);
     while(true){
         int P = master.get_analog(ANALOG_LEFT_Y);
@@ -108,17 +128,56 @@ void opcontrol() {
         RB = T - P - S;
         delay(50);
 
-        if(master.get_digital(E_CONTROLLER_DIGITAL_B)){aimbotForSchoolShooting.move(25); } //if get "B" Button press moves motor at a positive voltage of 50
-        else if(master.get_digital(E_CONTROLLER_DIGITAL_A)){aimbotForSchoolShooting.move(-25);}//if get "A" Button press moves motor at a negative voltage of 50
-        else{aimbotForSchoolShooting.move(-5); ;}//defaults value for if button not pressed to stop the rotation
-        delay(50);
+        if(master.get_digital_new_press(DIGITAL_R1) == 1) {
+            glock = - 127;
+            muzzel = 127;
+        } else if(master.get_digital_new_press(DIGITAL_R2) == 1) {
+            glock.move(0);
+            muzzel.move(0);
+        }
 
-        if(master.get_digital(E_CONTROLLER_DIGITAL_X)){glock.move(-MAX_VOLTAGE_SPEED); muzzel.move(-MAX_VOLTAGE_SPEED);}
-        else{glock.move(0); muzzel.move(0);}
+       
 
-        if(master.get_digital(E_CONTROLLER_DIGITAL_Y)) {inserter.move(100);}
+        if(master.get_digital(E_CONTROLLER_DIGITAL_Y)){inserter.move(100);}
         else{inserter.move(0);}
 
+        if(master.get_digital_new_press(DIGITAL_L1) == 1){
+            shooterPosition = !shooterPosition;
+            ejaculate.set_value(shooterPosition);
+        }
+
+        if(master.get_digital_new_press(DIGITAL_A) == 1) {
+            angleCondition = !angleCondition; 
+            aimYourEjaculation.set_value(angleCondition);
+        }
+
         pros::lcd::clear_line(1);
-                }
+        }
     }
+    //functions for moving in different directions based on encoder ticks and degrees
+void powerDrive(double T, double P, double S){
+    LF = T - P + S;
+    LB = T + P - S;
+    RF = T + P + S;
+    RB = T - P - S;
+}
+
+void drive(double ticks){
+    RF.tare_position();
+    while(RF.get_position() <= ticks){
+        powerDrive(0, 100, 0);
+    }
+    powerDrive(0, -10, 0);
+    delay(50);
+    powerDrive(0, 0, 0);
+}
+
+void turn(double degrees) {
+    imu.tare_rotation();
+    while(imu.get_rotation() <= degrees) {
+        powerDrive(60, 0, 0);
+    }
+    powerDrive(-10, 0, 0);
+    delay(50);
+    powerDrive(0, 0, 0);
+}
